@@ -1,0 +1,37 @@
+## Interface: 120000
+## Title: Lib's TimePlayed
+## Notes: Track /played time across all characters with class-grouped display
+## IconTexture: Interface/Icons/INV_Misc_PocketWatch_01
+## Version: @project-version@
+## Author: Lib
+## SavedVariables: LibsTimePlayedDB
+## OptionalDeps: Libs-DataBar, Libs-AddonTools
+## Category: Data Broker
+## Category-enUS: Data Broker
+## Category-deDE: Daten-Broker
+
+# Libraries
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+libs\AceAddon-3.0\AceAddon-3.0.xml
+libs\AceEvent-3.0\AceEvent-3.0.xml
+libs\AceTimer-3.0\AceTimer-3.0.xml
+libs\AceDB-3.0\AceDB-3.0.xml
+libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+libs\AceConsole-3.0\AceConsole-3.0.xml
+libs\AceConfig-3.0\AceConfig-3.0.xml
+libs\AceGUI-3.0\AceGUI-3.0.xml
+libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+# Core
+Libs-TimePlayed.lua
+Core\Database.lua
+Core\PlayedTracker.lua
+Core\TimeFormatter.lua
+
+# UI
+UI\DataBroker.lua
+UI\Tooltip.lua
+UI\Options.lua
+UI\MinimapButton.lua
