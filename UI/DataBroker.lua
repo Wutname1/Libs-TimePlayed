@@ -14,7 +14,7 @@ function LibsTimePlayed:InitializeDataBroker()
 		OnClick = function(frame, button)
 			if button == 'LeftButton' then
 				if IsShiftKeyDown() then
-					LibsTimePlayed:OpenOptions()
+					LibsTimePlayed:TogglePopup()
 				else
 					LibsTimePlayed:CycleDisplayFormat()
 				end

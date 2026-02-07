@@ -48,6 +48,50 @@ function LibsTimePlayed:InitializeOptions()
 							LibsTimePlayed:UpdateDisplay()
 						end,
 					},
+					groupBy = {
+						name = 'Group By',
+						desc = 'How to group characters in tooltip and popup window',
+						type = 'select',
+						order = 3,
+						values = {
+							class = 'Class',
+							realm = 'Realm',
+							faction = 'Faction',
+						},
+						get = function()
+							return LibsTimePlayed.db.display.groupBy
+						end,
+						set = function(_, val)
+							LibsTimePlayed.db.display.groupBy = val
+							LibsTimePlayed:UpdateDisplay()
+						end,
+					},
+					showBarsInTooltip = {
+						name = 'Show Bars in Tooltip',
+						desc = 'Display text-based progress bars next to groups in the tooltip',
+						type = 'toggle',
+						order = 4,
+						width = 'full',
+						get = function()
+							return LibsTimePlayed.db.display.showBarsInTooltip
+						end,
+						set = function(_, val)
+							LibsTimePlayed.db.display.showBarsInTooltip = val
+						end,
+					},
+					showMilestones = {
+						name = 'Show Milestones',
+						desc = 'Display milestone achievements in tooltip and popup window',
+						type = 'toggle',
+						order = 5,
+						width = 'full',
+						get = function()
+							return LibsTimePlayed.db.display.showMilestones
+						end,
+						set = function(_, val)
+							LibsTimePlayed.db.display.showMilestones = val
+						end,
+					},
 				},
 			},
 			data = {
@@ -74,6 +118,43 @@ function LibsTimePlayed:InitializeOptions()
 						confirmText = 'Remove characters not updated in 90+ days?',
 						func = function()
 							LibsTimePlayed:PurgeOldCharacters(90)
+						end,
+					},
+				},
+			},
+			popup = {
+				name = 'Popup Window',
+				type = 'group',
+				order = 3,
+				inline = true,
+				args = {
+					toggle = {
+						name = 'Toggle Popup Window',
+						desc = 'Show or hide the standalone popup window',
+						type = 'execute',
+						order = 1,
+						func = function()
+							LibsTimePlayed:TogglePopup()
+						end,
+					},
+					resetPosition = {
+						name = 'Reset Position',
+						desc = 'Reset popup window size and position to defaults',
+						type = 'execute',
+						order = 2,
+						func = function()
+							LibsTimePlayed.db.popup.width = 520
+							LibsTimePlayed.db.popup.height = 300
+							LibsTimePlayed.db.popup.point = 'CENTER'
+							LibsTimePlayed.db.popup.x = 0
+							LibsTimePlayed.db.popup.y = 0
+							local frame = _G['LibsTimePlayedPopup']
+							if frame then
+								frame:ClearAllPoints()
+								frame:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+								frame:SetSize(520, 300)
+							end
+							LibsTimePlayed:Print('Popup position reset.')
 						end,
 					},
 				},

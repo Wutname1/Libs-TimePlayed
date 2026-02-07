@@ -29,9 +29,11 @@ Libs-TimePlayed.lua
 Core\Database.lua
 Core\PlayedTracker.lua
 Core\TimeFormatter.lua
+Core\Milestones.lua
 
 # UI
 UI\DataBroker.lua
 UI\Tooltip.lua
+UI\PopupWindow.lua
 UI\Options.lua
 UI\MinimapButton.lua

@@ -11,6 +11,16 @@ local defaults = {
 		display = {
 			format = 'total', -- 'total', 'session', 'level'
 			timeFormat = 'smart', -- 'smart', 'full', 'hours'
+			groupBy = 'class', -- 'class', 'realm', 'faction'
+			showBarsInTooltip = true,
+			showMilestones = true,
+		},
+		popup = {
+			width = 520,
+			height = 300,
+			point = 'CENTER',
+			x = 0,
+			y = 0,
 		},
 		minimap = {
 			hide = false,

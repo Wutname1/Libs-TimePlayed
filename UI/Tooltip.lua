@@ -1,6 +1,35 @@
 ---@class LibsTimePlayed
 local LibsTimePlayed = LibStub('AceAddon-3.0'):GetAddon('Libs-TimePlayed')
 
+local BAR_WIDTH = 15
+local FILL_CHAR = '|'
+local DARK_COLOR = '|cff333333'
+
+local GROUPBY_LABELS = {
+	class = 'Class',
+	realm = 'Realm',
+	faction = 'Faction',
+}
+
+---Build a text-based bar using colored pipe characters
+---@param fillPercent number 0-1
+---@param r number
+---@param g number
+---@param b number
+---@return string
+local function BuildTextBar(fillPercent, r, g, b)
+	local filled = math.floor(fillPercent * BAR_WIDTH + 0.5)
+	filled = math.max(0, math.min(BAR_WIDTH, filled))
+	local empty = BAR_WIDTH - filled
+
+	local colorHex = string.format('|cff%02x%02x%02x', r * 255, g * 255, b * 255)
+	local bar = colorHex .. string.rep(FILL_CHAR, filled) .. '|r'
+	if empty > 0 then
+		bar = bar .. DARK_COLOR .. string.rep(FILL_CHAR, empty) .. '|r'
+	end
+	return bar
+end
+
 function LibsTimePlayed:BuildTooltip(tooltip)
 	tooltip:SetText("Lib's TimePlayed")
 
@@ -22,46 +51,61 @@ function LibsTimePlayed:BuildTooltip(tooltip)
 	tooltip:AddDoubleLine('  This Level:', self.FormatTime(self:GetLevelPlayed(), 'full'), 0.8, 0.8, 0.8, 1, 1, 1)
 	tooltip:AddDoubleLine('  Session:', self.FormatTime(self:GetSessionTime(), 'full'), 0.8, 0.8, 0.8, 1, 1, 1)
 
-	-- Account summary grouped by class
-	local classGroups, accountTotal = self:GetAccountData()
+	-- Account summary using GetGroupedData
+	local sortedGroups, accountTotal = self:GetGroupedData()
+	local groupBy = self.db.display.groupBy or 'class'
+	local showBars = self.db.display.showBarsInTooltip
 
 	if accountTotal > 0 then
 		tooltip:AddLine(' ')
 		tooltip:AddDoubleLine('Account Total', self.FormatTime(accountTotal, 'smart'), 1, 0.82, 0, 1, 1, 1)
 		tooltip:AddLine(' ')
+		tooltip:AddLine('Grouped by: ' .. GROUPBY_LABELS[groupBy], 0.5, 0.5, 0.5)
 
-		-- Sort classes by total played time descending
-		local sortedClasses = {}
-		for classFile, chars in pairs(classGroups) do
-			local classTotal = 0
-			for _, char in ipairs(chars) do
-				classTotal = classTotal + char.totalPlayed
+		-- Find top group total for bar scaling
+		local topGroupTotal = sortedGroups[1] and sortedGroups[1].total or 0
+
+		for _, group in ipairs(sortedGroups) do
+			local clr = group.color
+			local r, g, b = clr.r, clr.g, clr.b
+
+			-- Percentage of account total
+			local percent = accountTotal > 0 and (group.total / accountTotal * 100) or 0
+			local barPercent = topGroupTotal > 0 and (group.total / topGroupTotal) or 0
+
+			-- Group header with optional bar
+			local headerLeft
+			if showBars then
+				local bar = BuildTextBar(barPercent, r, g, b)
+				headerLeft = string.format('%s %s %.0f%%', group.label, bar, percent)
+			else
+				headerLeft = string.format('%s (%.0f%%)', group.label, percent)
 			end
-			table.insert(sortedClasses, {
-				classFile = classFile,
-				className = chars[1].class,
-				chars = chars,
-				total = classTotal,
-			})
-		end
-		table.sort(sortedClasses, function(a, b)
-			return a.total > b.total
-		end)
+			tooltip:AddDoubleLine(headerLeft, self.FormatTime(group.total, 'smart'), r, g, b, 0.8, 0.8, 0.8)
 
-		for _, classData in ipairs(sortedClasses) do
-			local clr = RAID_CLASS_COLORS[classData.classFile]
-			local r, g, b = 1, 1, 1
-			if clr then
-				r, g, b = clr.r, clr.g, clr.b
-			end
-
-			-- Class header with total
-			tooltip:AddDoubleLine(classData.className, self.FormatTime(classData.total, 'smart'), r, g, b, 0.8, 0.8, 0.8)
-
-			-- Individual characters under each class
-			for _, char in ipairs(classData.chars) do
+			-- Individual characters under each group
+			for _, char in ipairs(group.chars) do
 				local charLabel = string.format('  %s (%d)', char.name, char.level)
-				tooltip:AddDoubleLine(charLabel, self.FormatTime(char.totalPlayed, 'smart'), 0.6, 0.6, 0.6, 0.6, 0.6, 0.6)
+				-- When grouping by realm or faction, color character names by class
+				local cr, cg, cb = 0.6, 0.6, 0.6
+				if groupBy ~= 'class' then
+					local charColor = RAID_CLASS_COLORS[char.classFile]
+					if charColor then
+						cr, cg, cb = charColor.r, charColor.g, charColor.b
+					end
+				end
+				tooltip:AddDoubleLine(charLabel, self.FormatTime(char.totalPlayed, 'smart'), cr, cg, cb, 0.6, 0.6, 0.6)
+			end
+		end
+
+		-- Milestones
+		if self.GetMilestones and self.db.display.showMilestones then
+			local milestones = self:GetMilestones(sortedGroups, accountTotal)
+			if #milestones > 0 then
+				tooltip:AddLine(' ')
+				for _, milestone in ipairs(milestones) do
+					tooltip:AddLine(milestone, 0.7, 0.7, 0.7)
+				end
 			end
 		end
 	end
@@ -69,7 +113,7 @@ function LibsTimePlayed:BuildTooltip(tooltip)
 	-- Click hints
 	tooltip:AddLine(' ')
 	tooltip:AddLine('|cffffff00Left Click:|r Cycle Format (total/session/level)')
-	tooltip:AddLine('|cffffff00Shift+Left:|r Options | |cffffff00Right:|r Options')
+	tooltip:AddLine('|cffffff00Shift+Left:|r Toggle Window | |cffffff00Right:|r Options')
 	tooltip:AddLine('|cffffff00Middle Click:|r Refresh /played')
 
 	tooltip:Show()
