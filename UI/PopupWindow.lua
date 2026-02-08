@@ -3,7 +3,11 @@ local LibsTimePlayed = LibStub('AceAddon-3.0'):GetAddon('Libs-TimePlayed')
 
 local ROW_HEIGHT = 22
 local MAX_ROWS = 30
-local GROUPBY_CYCLE = { 'class', 'realm', 'faction' }
+local GROUPBY_ITEMS = {
+	{ key = 'class', label = 'Class' },
+	{ key = 'realm', label = 'Realm' },
+	{ key = 'faction', label = 'Faction' },
+}
 local GROUPBY_LABELS = {
 	class = 'Class',
 	realm = 'Realm',
@@ -141,15 +145,43 @@ function LibsTimePlayed:CreatePopup()
 	local closeBtn = CreateFrame('Button', nil, frame, 'UIPanelCloseButton')
 	closeBtn:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -2, -2)
 
-	-- Grouping cycle button
-	local groupBtn = CreateFrame('Button', nil, frame, 'UIPanelButtonTemplate')
-	groupBtn:SetSize(80, 22)
-	groupBtn:SetPoint('TOPLEFT', frame, 'TOPLEFT', 12, -10)
-	groupBtn:SetText('Class')
-	groupBtn:SetScript('OnClick', function()
-		self:CycleGroupBy()
-	end)
-	frame.groupBtn = groupBtn
+	-- Grouping dropdown (LibAT or fallback)
+	if LibAT and LibAT.UI and LibAT.UI.CreateDropdown then
+		local groupDropdown = LibAT.UI.CreateDropdown(frame, 'Group: Class', 140, 22)
+		groupDropdown:SetPoint('TOPLEFT', frame, 'TOPLEFT', 12, -10)
+		groupDropdown:SetupMenu(function(_, rootDescription)
+			for _, item in ipairs(GROUPBY_ITEMS) do
+				local button = rootDescription:CreateButton(item.label, function()
+					self.db.display.groupBy = item.key
+					groupDropdown:SetText('Group: ' .. item.label)
+					self:UpdatePopup()
+				end)
+				if self.db.display.groupBy == item.key then
+					button:SetRadio(true)
+				end
+			end
+		end)
+		frame.groupDropdown = groupDropdown
+	else
+		-- Fallback: simple cycle button if LibAT not available
+		local groupBtn = CreateFrame('Button', nil, frame, 'UIPanelButtonTemplate')
+		groupBtn:SetSize(140, 22)
+		groupBtn:SetPoint('TOPLEFT', frame, 'TOPLEFT', 12, -10)
+		groupBtn:SetText('Group: Class')
+		groupBtn:SetScript('OnClick', function()
+			local current = self.db.display.groupBy or 'class'
+			for i, item in ipairs(GROUPBY_ITEMS) do
+				if item.key == current then
+					local next = GROUPBY_ITEMS[i < #GROUPBY_ITEMS and i + 1 or 1]
+					self.db.display.groupBy = next.key
+					groupBtn:SetText('Group: ' .. next.label)
+					self:UpdatePopup()
+					return
+				end
+			end
+		end)
+		frame.groupDropdown = groupBtn
+	end
 
 	-- Scroll frame
 	local scrollFrame = CreateFrame('ScrollFrame', 'LibsTimePlayedPopupScroll', frame, 'UIPanelScrollFrameTemplate')
@@ -236,9 +268,11 @@ function LibsTimePlayed:UpdatePopup()
 	local sortedGroups, accountTotal = self:GetGroupedData()
 	local groupBy = self.db.display.groupBy or 'class'
 
-	-- Update title and group button
+	-- Update title and dropdown text
 	popupFrame.title:SetText("Lib's TimePlayed - By " .. GROUPBY_LABELS[groupBy])
-	popupFrame.groupBtn:SetText(GROUPBY_LABELS[groupBy])
+	if popupFrame.groupDropdown then
+		popupFrame.groupDropdown:SetText('Group: ' .. GROUPBY_LABELS[groupBy])
+	end
 
 	-- Find top group total for bar scaling
 	local topGroupTotal = 0
@@ -312,20 +346,3 @@ function LibsTimePlayed:TogglePopup()
 	end
 end
 
----Cycle groupBy mode (class -> realm -> faction)
-function LibsTimePlayed:CycleGroupBy()
-	local current = self.db.display.groupBy or 'class'
-	local nextMode
-	for i, mode in ipairs(GROUPBY_CYCLE) do
-		if mode == current then
-			nextMode = GROUPBY_CYCLE[i < #GROUPBY_CYCLE and i + 1 or 1]
-			break
-		end
-	end
-	self.db.display.groupBy = nextMode or 'class'
-
-	-- Refresh popup if visible
-	if popupFrame and popupFrame:IsShown() then
-		self:UpdatePopup()
-	end
-end

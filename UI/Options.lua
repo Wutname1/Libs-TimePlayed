@@ -159,12 +159,8 @@ function LibsTimePlayed:InitializeOptions()
 					},
 				},
 			},
-			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(LibsTimePlayed.dbobj),
 		},
 	}
-
-	-- Move profiles to end
-	options.args.profiles.order = 99
 
 	LibStub('AceConfig-3.0'):RegisterOptionsTable('LibsTimePlayed', options)
 	LibStub('AceConfigDialog-3.0'):AddToBlizOptions('LibsTimePlayed', "Lib's TimePlayed")

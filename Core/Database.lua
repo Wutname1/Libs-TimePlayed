@@ -32,16 +32,4 @@ function LibsTimePlayed:InitializeDatabase()
 	self.dbobj = LibStub('AceDB-3.0'):New('LibsTimePlayedDB', defaults, true)
 	self.db = self.dbobj.profile
 	self.globaldb = self.dbobj.global
-
-	-- Profile callbacks
-	self.dbobj.RegisterCallback(self, 'OnProfileChanged', 'OnProfileChanged')
-	self.dbobj.RegisterCallback(self, 'OnProfileCopied', 'OnProfileChanged')
-	self.dbobj.RegisterCallback(self, 'OnProfileReset', 'OnProfileChanged')
-end
-
-function LibsTimePlayed:OnProfileChanged()
-	self.db = self.dbobj.profile
-	if self.UpdateDisplay then
-		self:UpdateDisplay()
-	end
 end
