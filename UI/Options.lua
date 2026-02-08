@@ -109,6 +109,58 @@ function LibsTimePlayed:InitializeOptions()
 					},
 				},
 			},
+			characters = {
+				name = 'Manage Characters',
+				type = 'group',
+				order = 2.5,
+				inline = true,
+				args = {
+					desc = {
+						name = 'Select characters to remove from tracking. The current character cannot be removed.',
+						type = 'description',
+						order = 0,
+					},
+					charSelect = {
+						name = 'Tracked Characters',
+						type = 'multiselect',
+						order = 1,
+						width = 'full',
+						values = function()
+							return LibsTimePlayed:GetCharacterListForOptions()
+						end,
+						get = function(_, key)
+							return LibsTimePlayed.selectedCharsForDeletion and LibsTimePlayed.selectedCharsForDeletion[key]
+						end,
+						set = function(_, key, val)
+							if not LibsTimePlayed.selectedCharsForDeletion then
+								LibsTimePlayed.selectedCharsForDeletion = {}
+							end
+							LibsTimePlayed.selectedCharsForDeletion[key] = val or nil
+						end,
+					},
+					deleteSelected = {
+						name = 'Delete Selected',
+						desc = 'Remove the selected characters from tracking',
+						type = 'execute',
+						order = 2,
+						confirm = function()
+							local count = 0
+							if LibsTimePlayed.selectedCharsForDeletion then
+								for _ in pairs(LibsTimePlayed.selectedCharsForDeletion) do
+									count = count + 1
+								end
+							end
+							if count == 0 then
+								return false
+							end
+							return 'Remove ' .. count .. ' selected character(s)? This cannot be undone.'
+						end,
+						func = function()
+							LibsTimePlayed:DeleteSelectedCharacters()
+						end,
+					},
+				},
+			},
 			popup = {
 				name = 'Popup Window',
 				type = 'group',
@@ -171,4 +223,45 @@ function LibsTimePlayed:PurgeOldCharacters(days)
 	end
 
 	self:Print('Removed ' .. removed .. ' character(s) not updated in ' .. days .. '+ days')
+end
+
+---Build a sorted list of character keys for the options multiselect
+---Excludes the currently logged-in character
+---@return table<string, string> values keyed by charKey, value is display label
+function LibsTimePlayed:GetCharacterListForOptions()
+	local values = {}
+	local playerName = UnitName('player')
+	local playerRealm = GetNormalizedRealmName()
+	local currentKey = playerRealm and playerName and (playerRealm .. '-' .. playerName) or ''
+
+	for charKey, data in pairs(self.globaldb.characters) do
+		if type(data) == 'table' and charKey ~= currentKey then
+			local label = (data.name or '?') .. ' - ' .. (data.realm or '?')
+			if data.class then
+				label = label .. ' (' .. data.class .. ' ' .. (data.level or '?') .. ')'
+			end
+			label = label .. '  ' .. self.FormatTime(data.totalPlayed or 0, 'smart')
+			values[charKey] = label
+		end
+	end
+
+	return values
+end
+
+---Delete all characters marked in selectedCharsForDeletion
+function LibsTimePlayed:DeleteSelectedCharacters()
+	if not self.selectedCharsForDeletion then
+		return
+	end
+
+	local removed = 0
+	for charKey in pairs(self.selectedCharsForDeletion) do
+		if self.globaldb.characters[charKey] then
+			self.globaldb.characters[charKey] = nil
+			removed = removed + 1
+		end
+	end
+
+	self.selectedCharsForDeletion = nil
+	self:Print('Removed ' .. removed .. ' character(s)')
 end
