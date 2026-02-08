@@ -2,7 +2,8 @@
 local LibsTimePlayed = LibStub('AceAddon-3.0'):GetAddon('Libs-TimePlayed')
 
 local ROW_HEIGHT = 22
-local MAX_ROWS = 30
+local CHAR_ROW_HEIGHT = 18
+local MAX_ROWS = 120 -- group rows + character rows combined
 local GROUPBY_ITEMS = {
 	{ key = 'class', label = 'Class' },
 	{ key = 'realm', label = 'Realm' },
@@ -17,6 +18,7 @@ local GROUPBY_LABELS = {
 -- Row pool
 local rows = {}
 local popupFrame
+local expandedGroups = {} -- tracks which groups are expanded by key
 
 ---Create a single data row with label, bar, percent, and value
 ---@param parent Frame
@@ -27,10 +29,17 @@ local function CreateRow(parent, width)
 	row:SetHeight(ROW_HEIGHT)
 	row:SetWidth(width)
 
+	-- Expand indicator
+	local expandIcon = row:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
+	expandIcon:SetPoint('LEFT', row, 'LEFT', 4, 0)
+	expandIcon:SetWidth(12)
+	expandIcon:SetJustifyH('LEFT')
+	row.expandIcon = expandIcon
+
 	-- Group/class label
 	local label = row:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
-	label:SetPoint('LEFT', row, 'LEFT', 4, 0)
-	label:SetWidth(100)
+	label:SetPoint('LEFT', expandIcon, 'RIGHT', 2, 0)
+	label:SetWidth(90)
 	label:SetJustifyH('LEFT')
 	row.label = label
 
@@ -62,6 +71,15 @@ local function CreateRow(parent, width)
 
 	row.bar = bar
 
+	-- Highlight texture for hover
+	local highlight = row:CreateTexture(nil, 'HIGHLIGHT')
+	highlight:SetAllPoints()
+	highlight:SetColorTexture(1, 1, 1, 0.05)
+	row.highlight = highlight
+
+	-- Enable mouse for click and hover
+	row:EnableMouse(true)
+
 	return row
 end
 
@@ -76,6 +94,32 @@ local function UpdateScrollBarVisibility(frame)
 	else
 		frame.scrollBar:Hide()
 	end
+end
+
+---Show GameTooltip with character breakdown for a group
+---@param row Frame
+---@param group table
+local function ShowGroupTooltip(row, group)
+	if #group.chars <= 1 then
+		return
+	end
+
+	GameTooltip:SetOwner(row, 'ANCHOR_RIGHT')
+	GameTooltip:AddLine(group.label, group.color.r, group.color.g, group.color.b)
+	GameTooltip:AddLine(' ')
+
+	for _, char in ipairs(group.chars) do
+		local charColor = RAID_CLASS_COLORS[char.classFile]
+		local r, g, b = 0.8, 0.8, 0.8
+		if charColor then
+			r, g, b = charColor.r, charColor.g, charColor.b
+		end
+		local charText = char.name .. ' (' .. char.level .. ')'
+		local timeText = LibsTimePlayed.FormatTime(char.totalPlayed, 'smart')
+		GameTooltip:AddDoubleLine(charText, timeText, r, g, b, 0.8, 0.8, 0.8)
+	end
+
+	GameTooltip:Show()
 end
 
 ---Create the popup window frame
@@ -172,9 +216,9 @@ function LibsTimePlayed:CreatePopup()
 			local current = self.db.display.groupBy or 'class'
 			for i, item in ipairs(GROUPBY_ITEMS) do
 				if item.key == current then
-					local next = GROUPBY_ITEMS[i < #GROUPBY_ITEMS and i + 1 or 1]
-					self.db.display.groupBy = next.key
-					groupBtn:SetText('Group: ' .. next.label)
+					local nextItem = GROUPBY_ITEMS[i < #GROUPBY_ITEMS and i + 1 or 1]
+					self.db.display.groupBy = nextItem.key
+					groupBtn:SetText('Group: ' .. nextItem.label)
 					self:UpdatePopup()
 					return
 				end
@@ -212,7 +256,6 @@ function LibsTimePlayed:CreatePopup()
 	-- Pre-allocate rows
 	for i = 1, MAX_ROWS do
 		local row = CreateRow(scrollChild, scrollChild:GetWidth())
-		row:SetPoint('TOPLEFT', scrollChild, 'TOPLEFT', 0, -((i - 1) * ROW_HEIGHT))
 		row:Hide()
 		rows[i] = row
 	end
@@ -259,6 +302,92 @@ function LibsTimePlayed:UpdatePopupLayout()
 	UpdateScrollBarVisibility(popupFrame.scrollFrame)
 end
 
+---Configure a row as a group row
+---@param row Frame
+---@param group table
+---@param barPercent number
+---@param percent number
+---@param isExpanded boolean
+---@param hasChars boolean Whether the group has multiple characters
+local function SetupGroupRow(row, group, barPercent, percent, isExpanded, hasChars)
+	local color = group.color
+	row:SetHeight(ROW_HEIGHT)
+
+	-- Expand indicator
+	if hasChars then
+		row.expandIcon:SetText(isExpanded and '-' or '+')
+		row.expandIcon:SetTextColor(0.8, 0.8, 0.8)
+	else
+		row.expandIcon:SetText('')
+	end
+
+	-- Label
+	row.label:SetText(group.label)
+	row.label:SetTextColor(color.r, color.g, color.b)
+	row.label:SetWidth(90)
+
+	-- Bar
+	row.bar:SetValue(barPercent)
+	row.bar:SetStatusBarColor(color.r, color.g, color.b, 0.8)
+	row.bar:Show()
+
+	-- Percent
+	row.percentText:SetText(string.format('%.1f%%', percent))
+	row.percentText:SetTextColor(0.8, 0.8, 0.8)
+
+	-- Value
+	row.valueText:SetText(LibsTimePlayed.FormatTime(group.total, 'smart'))
+	row.valueText:SetTextColor(1, 1, 1)
+
+	-- Store group data for click/hover
+	row.groupData = group
+	row.isGroupRow = true
+	row.isCharRow = false
+
+	row:Show()
+end
+
+---Configure a row as a character detail row (indented under group)
+---@param row Frame
+---@param char table
+---@param groupBy string
+local function SetupCharRow(row, char, groupBy)
+	row:SetHeight(CHAR_ROW_HEIGHT)
+
+	-- No expand indicator for char rows
+	row.expandIcon:SetText('')
+
+	-- Character name with indent
+	local cr, cg, cb = 0.7, 0.7, 0.7
+	if groupBy ~= 'class' then
+		local charColor = RAID_CLASS_COLORS[char.classFile]
+		if charColor then
+			cr, cg, cb = charColor.r, charColor.g, charColor.b
+		end
+	end
+
+	row.label:SetText('    ' .. char.name .. ' (' .. char.level .. ')')
+	row.label:SetTextColor(cr, cg, cb)
+	row.label:SetWidth(200)
+
+	-- Hide bar for char rows
+	row.bar:Hide()
+
+	-- No percent for char rows
+	row.percentText:SetText('')
+
+	-- Time value
+	row.valueText:SetText(LibsTimePlayed.FormatTime(char.totalPlayed, 'smart'))
+	row.valueText:SetTextColor(0.7, 0.7, 0.7)
+
+	-- Mark as char row
+	row.groupData = nil
+	row.isGroupRow = false
+	row.isCharRow = true
+
+	row:Show()
+end
+
 ---Populate the popup with current data
 function LibsTimePlayed:UpdatePopup()
 	if not popupFrame then
@@ -280,36 +409,67 @@ function LibsTimePlayed:UpdatePopup()
 		topGroupTotal = sortedGroups[1].total
 	end
 
-	-- Populate rows
+	-- Populate rows (groups + expanded character rows)
 	local rowIndex = 0
+	local yOffset = 0
+
 	for _, group in ipairs(sortedGroups) do
 		rowIndex = rowIndex + 1
 		if rowIndex > MAX_ROWS then
 			break
 		end
 
-		local row = rows[rowIndex]
-		local color = group.color
-
-		-- Label
-		row.label:SetText(group.label)
-		row.label:SetTextColor(color.r, color.g, color.b)
-
-		-- Bar: width relative to top group
 		local barPercent = topGroupTotal > 0 and (group.total / topGroupTotal) or 0
-		row.bar:SetValue(barPercent)
-		row.bar:SetStatusBarColor(color.r, color.g, color.b, 0.8)
-
-		-- Percent: relative to account total
 		local percent = accountTotal > 0 and (group.total / accountTotal * 100) or 0
-		row.percentText:SetText(string.format('%.1f%%', percent))
-		row.percentText:SetTextColor(0.8, 0.8, 0.8)
+		local isExpanded = expandedGroups[group.key] or false
+		local hasChars = #group.chars > 1
 
-		-- Value
-		row.valueText:SetText(self.FormatTime(group.total, 'smart'))
-		row.valueText:SetTextColor(1, 1, 1)
+		local row = rows[rowIndex]
+		row:ClearAllPoints()
+		row:SetPoint('TOPLEFT', popupFrame.scrollChild, 'TOPLEFT', 0, -yOffset)
+		SetupGroupRow(row, group, barPercent, percent, isExpanded, hasChars)
 
-		row:Show()
+		-- Click handler for expand/collapse
+		row:SetScript('OnMouseDown', function()
+			if hasChars then
+				expandedGroups[group.key] = not expandedGroups[group.key]
+				self:UpdatePopup()
+			end
+		end)
+
+		-- Hover handler for character tooltip
+		row:SetScript('OnEnter', function(r)
+			if hasChars then
+				ShowGroupTooltip(r, group)
+			end
+		end)
+		row:SetScript('OnLeave', function()
+			GameTooltip:Hide()
+		end)
+
+		yOffset = yOffset + ROW_HEIGHT
+
+		-- Show character detail rows if expanded
+		if isExpanded and hasChars then
+			for _, char in ipairs(group.chars) do
+				rowIndex = rowIndex + 1
+				if rowIndex > MAX_ROWS then
+					break
+				end
+
+				local charRow = rows[rowIndex]
+				charRow:ClearAllPoints()
+				charRow:SetPoint('TOPLEFT', popupFrame.scrollChild, 'TOPLEFT', 0, -yOffset)
+				SetupCharRow(charRow, char, groupBy)
+
+				-- No special click/hover for char rows
+				charRow:SetScript('OnMouseDown', nil)
+				charRow:SetScript('OnEnter', nil)
+				charRow:SetScript('OnLeave', nil)
+
+				yOffset = yOffset + CHAR_ROW_HEIGHT
+			end
+		end
 	end
 
 	-- Hide unused rows
@@ -318,7 +478,7 @@ function LibsTimePlayed:UpdatePopup()
 	end
 
 	-- Set content height
-	popupFrame.scrollChild:SetHeight(rowIndex * ROW_HEIGHT)
+	popupFrame.scrollChild:SetHeight(yOffset)
 
 	-- Total
 	popupFrame.totalText:SetText('Account Total: ' .. self.FormatTime(accountTotal, 'full'))
@@ -345,4 +505,3 @@ function LibsTimePlayed:TogglePopup()
 		frame:Show()
 	end
 end
-

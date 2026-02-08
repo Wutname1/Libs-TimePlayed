@@ -2,10 +2,9 @@
 local LibsTimePlayed = LibStub('AceAddon-3.0'):GetAddon('Libs-TimePlayed')
 
 local LDB = LibStub('LibDataBroker-1.1')
-local LibQTip = LibStub('LibQTip-1.0')
+local LibQTip = LibStub('LibQTip-2.0')
 
 local dataObj
-local activeTooltip
 
 function LibsTimePlayed:InitializeDataBroker()
 	dataObj = LDB:NewDataObject("Lib's TimePlayed", {
@@ -39,18 +38,17 @@ function LibsTimePlayed:InitializeDataBroker()
 end
 
 function LibsTimePlayed:ShowTooltip(anchorFrame)
-	if activeTooltip then
-		LibQTip:Release(activeTooltip)
-		activeTooltip = nil
+	if LibQTip:IsAcquiredTooltip('LibsTimePlayedTooltip') then
+		LibQTip:ReleaseTooltip(LibQTip:AcquireTooltip('LibsTimePlayedTooltip'))
 	end
 
-	activeTooltip = self:BuildTooltip(anchorFrame)
+	self:BuildTooltip(anchorFrame)
 end
 
 function LibsTimePlayed:HideTooltip()
-	if activeTooltip then
-		LibQTip:Release(activeTooltip)
-		activeTooltip = nil
+	if LibQTip:IsAcquiredTooltip('LibsTimePlayedTooltip') then
+		local tooltip = LibQTip:AcquireTooltip('LibsTimePlayedTooltip')
+		LibQTip:ReleaseTooltip(tooltip)
 	end
 end
 

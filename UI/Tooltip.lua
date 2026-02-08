@@ -1,7 +1,7 @@
 ---@class LibsTimePlayed
 local LibsTimePlayed = LibStub('AceAddon-3.0'):GetAddon('Libs-TimePlayed')
 
-local LibQTip = LibStub('LibQTip-1.0')
+local LibQTip = LibStub('LibQTip-2.0')
 
 local GROUPBY_LABELS = {
 	class = 'Class',
@@ -9,52 +9,25 @@ local GROUPBY_LABELS = {
 	faction = 'Faction',
 }
 
-local BAR_WIDTH = 12
-
----Build a text bar using block characters that don't conflict with WoW escape codes
----@param fillPercent number 0-1
----@param r number
----@param g number
----@param b number
----@return string
-local function BuildTextBar(fillPercent, r, g, b)
-	local filled = math.floor(fillPercent * BAR_WIDTH + 0.5)
-	filled = math.max(0, math.min(BAR_WIDTH, filled))
-	local empty = BAR_WIDTH - filled
-
-	local colorHex = string.format('|cff%02x%02x%02x', r * 255, g * 255, b * 255)
-	local bar = colorHex .. string.rep('\226\150\136', filled) .. '|r' -- UTF-8 full block character U+2588
-	if empty > 0 then
-		bar = bar .. '|cff333333' .. string.rep('\226\150\136', empty) .. '|r'
-	end
-	return bar
-end
-
----Format a color into a WoW color escape string
----@param r number
----@param g number
----@param b number
----@param text string
----@return string
-local function ColorText(r, g, b, text)
-	return string.format('|cff%02x%02x%02x%s|r', r * 255, g * 255, b * 255, text)
-end
-
 ---@param anchorFrame Frame
----@return table tooltip The LibQTip tooltip
+---@return LibQTip-2.0.Tooltip tooltip
 function LibsTimePlayed:BuildTooltip(anchorFrame)
-	local tooltip = LibQTip:Acquire('LibsTimePlayedTooltip', 4, 'LEFT', 'LEFT', 'RIGHT', 'RIGHT')
+	local tooltip = LibQTip:AcquireTooltip('LibsTimePlayedTooltip', 5, 'LEFT', 'LEFT', 'LEFT', 'RIGHT', 'RIGHT')
 	tooltip:Clear()
 
+	-- Column layout: Label | BarFill | BarEmpty | Percent | Time
+	-- Columns 2+3 form the visual bar via cell background colors
+
 	-- Title
-	local line = tooltip:AddHeader()
-	tooltip:SetCell(line, 1, "Lib's TimePlayed", 'CENTER', 4)
+	local row = tooltip:AddHeadingRow()
+	row:GetCell(1):SetText("Lib's TimePlayed"):SetColSpan(5):SetJustifyH('CENTER')
 
 	if not self:HasPlayedData() then
-		line = tooltip:AddLine()
-		tooltip:SetCell(line, 1, ColorText(0.7, 0.7, 0.7, 'Waiting for /played data...'), 'CENTER', 4)
+		row = tooltip:AddRow()
+		row:GetCell(1):SetText('Waiting for /played data...'):SetColSpan(5):SetJustifyH('CENTER'):SetTextColor(0.7, 0.7, 0.7)
 		tooltip:SmartAnchorTo(anchorFrame)
 		tooltip:SetAutoHideDelay(0.1, anchorFrame)
+		tooltip:UpdateLayout()
 		tooltip:Show()
 		return tooltip
 	end
@@ -63,23 +36,28 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 	local name = UnitName('player')
 	local _, classFile = UnitClass('player')
 	local color = RAID_CLASS_COLORS[classFile]
-	local coloredName = color and ColorText(color.r, color.g, color.b, name) or name
 
 	tooltip:AddSeparator()
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, coloredName .. ' (Lv ' .. UnitLevel('player') .. ')', 'LEFT', 2)
 
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, ColorText(0.8, 0.8, 0.8, '  Total:'), 'LEFT', 2)
-	tooltip:SetCell(line, 3, self.FormatTime(self:GetTotalPlayed(), 'full'), 'RIGHT', 2)
+	row = tooltip:AddRow()
+	local nameCell = row:GetCell(1):SetColSpan(5)
+	if color then
+		nameCell:SetText(name .. ' (Lv ' .. UnitLevel('player') .. ')'):SetTextColor(color.r, color.g, color.b)
+	else
+		nameCell:SetText(name .. ' (Lv ' .. UnitLevel('player') .. ')')
+	end
 
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, ColorText(0.8, 0.8, 0.8, '  This Level:'), 'LEFT', 2)
-	tooltip:SetCell(line, 3, self.FormatTime(self:GetLevelPlayed(), 'full'), 'RIGHT', 2)
+	row = tooltip:AddRow()
+	row:GetCell(1):SetText('  Total:'):SetTextColor(0.8, 0.8, 0.8):SetColSpan(3)
+	row:GetCell(4):SetText(self.FormatTime(self:GetTotalPlayed(), 'full')):SetColSpan(2):SetJustifyH('RIGHT')
 
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, ColorText(0.8, 0.8, 0.8, '  Session:'), 'LEFT', 2)
-	tooltip:SetCell(line, 3, self.FormatTime(self:GetSessionTime(), 'full'), 'RIGHT', 2)
+	row = tooltip:AddRow()
+	row:GetCell(1):SetText('  This Level:'):SetTextColor(0.8, 0.8, 0.8):SetColSpan(3)
+	row:GetCell(4):SetText(self.FormatTime(self:GetLevelPlayed(), 'full')):SetColSpan(2):SetJustifyH('RIGHT')
+
+	row = tooltip:AddRow()
+	row:GetCell(1):SetText('  Session:'):SetTextColor(0.8, 0.8, 0.8):SetColSpan(3)
+	row:GetCell(4):SetText(self.FormatTime(self:GetSessionTime(), 'full')):SetColSpan(2):SetJustifyH('RIGHT')
 
 	-- Account summary using GetGroupedData
 	local sortedGroups, accountTotal = self:GetGroupedData()
@@ -89,12 +67,12 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 	if accountTotal > 0 then
 		tooltip:AddSeparator()
 
-		line = tooltip:AddLine()
-		tooltip:SetCell(line, 1, ColorText(1, 0.82, 0, 'Account Total'), 'LEFT', 2)
-		tooltip:SetCell(line, 3, ColorText(1, 1, 1, self.FormatTime(accountTotal, 'smart')), 'RIGHT', 2)
+		row = tooltip:AddRow()
+		row:GetCell(1):SetText('Account Total'):SetTextColor(1, 0.82, 0):SetColSpan(3)
+		row:GetCell(4):SetText(self.FormatTime(accountTotal, 'smart')):SetColSpan(2):SetJustifyH('RIGHT'):SetTextColor(1, 1, 1)
 
-		line = tooltip:AddLine()
-		tooltip:SetCell(line, 1, ColorText(0.5, 0.5, 0.5, 'Grouped by: ' .. GROUPBY_LABELS[groupBy]), 'LEFT', 4)
+		row = tooltip:AddRow()
+		row:GetCell(1):SetText('Grouped by: ' .. GROUPBY_LABELS[groupBy]):SetTextColor(0.5, 0.5, 0.5):SetColSpan(5)
 
 		-- Find top group total for bar scaling
 		local topGroupTotal = sortedGroups[1] and sortedGroups[1].total or 0
@@ -107,15 +85,20 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 			local percent = accountTotal > 0 and (group.total / accountTotal * 100) or 0
 			local barPercent = topGroupTotal > 0 and (group.total / topGroupTotal) or 0
 
-			line = tooltip:AddLine()
-			tooltip:SetCell(line, 1, ColorText(r, g, b, group.label), 'LEFT')
+			row = tooltip:AddRow()
+			row:GetCell(1):SetText(group.label):SetTextColor(r, g, b)
+
 			if showBars then
-				tooltip:SetCell(line, 2, BuildTextBar(barPercent, r, g, b), 'LEFT')
+				-- Use cell background colors as visual bar
+				row:GetCell(2):SetText(' '):SetMinWidth(math.floor(barPercent * 80 + 0.5)):SetColor(r, g, b, 0.7)
+				row:GetCell(3):SetText(' '):SetMinWidth(math.max(1, 80 - math.floor(barPercent * 80 + 0.5))):SetColor(0.15, 0.15, 0.15, 0.5)
 			else
-				tooltip:SetCell(line, 2, '', 'LEFT')
+				row:GetCell(2):SetText('')
+				row:GetCell(3):SetText('')
 			end
-			tooltip:SetCell(line, 3, ColorText(0.8, 0.8, 0.8, string.format('%.0f%%', percent)), 'RIGHT')
-			tooltip:SetCell(line, 4, ColorText(0.8, 0.8, 0.8, self.FormatTime(group.total, 'smart')), 'RIGHT')
+
+			row:GetCell(4):SetText(string.format('%.0f%%', percent)):SetTextColor(0.8, 0.8, 0.8)
+			row:GetCell(5):SetText(self.FormatTime(group.total, 'smart')):SetTextColor(0.8, 0.8, 0.8)
 
 			-- Individual characters under each group
 			for _, char in ipairs(group.chars) do
@@ -127,9 +110,9 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 					end
 				end
 
-				line = tooltip:AddLine()
-				tooltip:SetCell(line, 1, ColorText(cr, cg, cb, '  ' .. char.name .. ' (' .. char.level .. ')'), 'LEFT', 3)
-				tooltip:SetCell(line, 4, ColorText(0.6, 0.6, 0.6, self.FormatTime(char.totalPlayed, 'smart')), 'RIGHT')
+				row = tooltip:AddRow()
+				row:GetCell(1):SetText('  ' .. char.name .. ' (' .. char.level .. ')'):SetTextColor(cr, cg, cb):SetColSpan(4)
+				row:GetCell(5):SetText(self.FormatTime(char.totalPlayed, 'smart')):SetTextColor(0.6, 0.6, 0.6)
 			end
 		end
 
@@ -139,8 +122,8 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 			if #milestones > 0 then
 				tooltip:AddSeparator()
 				for _, milestone in ipairs(milestones) do
-					line = tooltip:AddLine()
-					tooltip:SetCell(line, 1, ColorText(0.7, 0.7, 0.7, milestone), 'LEFT', 4)
+					row = tooltip:AddRow()
+					row:GetCell(1):SetText(milestone):SetTextColor(0.7, 0.7, 0.7):SetColSpan(5)
 				end
 			end
 		end
@@ -148,15 +131,16 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 
 	-- Click hints
 	tooltip:AddSeparator()
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, ColorText(1, 1, 0, 'Left Click:') .. ' Cycle Format', 'LEFT', 4)
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, ColorText(1, 1, 0, 'Shift+Left:') .. ' Toggle Window  ' .. ColorText(1, 1, 0, 'Right:') .. ' Options', 'LEFT', 4)
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, ColorText(1, 1, 0, 'Middle Click:') .. ' Refresh /played', 'LEFT', 4)
+	row = tooltip:AddRow()
+	row:GetCell(1):SetText('Left Click: Cycle Format'):SetTextColor(1, 1, 0):SetColSpan(5)
+	row = tooltip:AddRow()
+	row:GetCell(1):SetText('Shift+Left: Toggle Window  |  Right: Options'):SetTextColor(1, 1, 0):SetColSpan(5)
+	row = tooltip:AddRow()
+	row:GetCell(1):SetText('Middle Click: Refresh /played'):SetTextColor(1, 1, 0):SetColSpan(5)
 
 	tooltip:SmartAnchorTo(anchorFrame)
 	tooltip:SetAutoHideDelay(0.1, anchorFrame)
+	tooltip:UpdateLayout()
 	tooltip:Show()
 
 	return tooltip
