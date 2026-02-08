@@ -80,6 +80,19 @@ function LibsTimePlayed:InitializeOptions()
 							LibsTimePlayed.db.display.showMilestones = val
 						end,
 					},
+					showStreaks = {
+						name = 'Show Play Streaks',
+						desc = 'Display play streak information and 14-day timeline in tooltip',
+						type = 'toggle',
+						order = 6,
+						width = 'full',
+						get = function()
+							return LibsTimePlayed.db.display.showStreaks
+						end,
+						set = function(_, val)
+							LibsTimePlayed.db.display.showStreaks = val
+						end,
+					},
 				},
 			},
 			import = {

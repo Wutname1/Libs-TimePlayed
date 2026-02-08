@@ -119,6 +119,35 @@ function LibsTimePlayed:BuildTooltip(anchorFrame)
 				end
 			end
 		end
+
+		-- Play Streaks
+		if self.GetStreakInfo and self.db.display.showStreaks then
+			local streakInfo = self:GetStreakInfo()
+			if streakInfo.currentStreak > 0 or streakInfo.totalSessions > 0 then
+				tooltip:AddSeparator()
+
+				-- Section header
+				row = tooltip:AddRow()
+				row:GetCell(1):SetText('Play Streak'):SetTextColor(1, 0.82, 0):SetColSpan(3)
+
+				-- Current / Longest streak
+				row = tooltip:AddRow()
+				row:GetCell(1):SetText('  Current: |cff00ff00' .. streakInfo.currentStreak .. ' day' .. (streakInfo.currentStreak ~= 1 and 's' or '') .. '|r'):SetColSpan(1)
+				row:GetCell(2):SetText('Longest: |cff00ff00' .. streakInfo.longestStreak .. ' day' .. (streakInfo.longestStreak ~= 1 and 's' or '') .. '|r'):SetColSpan(2):SetJustifyH('RIGHT')
+
+				-- Average session / Total sessions
+				local avgText = string.format('%.1fh', streakInfo.averageSessionMinutes / 60)
+				row = tooltip:AddRow()
+				row:GetCell(1):SetText('  Avg Session: |cffffffff' .. avgText .. '|r'):SetColSpan(1)
+				row:GetCell(2):SetText('Sessions: |cffffffff' .. streakInfo.totalSessions .. '|r'):SetColSpan(2):SetJustifyH('RIGHT')
+
+				-- 14-day timeline
+				if streakInfo.timeline ~= '' then
+					row = tooltip:AddRow()
+					row:GetCell(1):SetText('  ' .. streakInfo.timeline):SetColSpan(3)
+				end
+			end
+		end
 	end
 
 	-- Click hints

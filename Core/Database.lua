@@ -10,6 +10,14 @@ local defaults = {
 			-- { source, timestamp, charactersImported, charactersSkipped, strategy }
 		},
 		firstTimeImportOffered = false, -- Track if we've offered first-time import
+		streaks = {
+			dailyLog = {}, -- ["2026-02-08"] = { totalSeconds = 7200, sessions = 2 }
+			currentStreak = 0,
+			longestStreak = 0,
+			longestStreakStart = '',
+			longestStreakEnd = '',
+			totalSessions = 0,
+		},
 	},
 	profile = {
 		display = {
@@ -17,6 +25,7 @@ local defaults = {
 			timeFormat = 'smart', -- 'smart', 'full', 'hours'
 			groupBy = 'class', -- 'class', 'realm', 'faction', 'none'
 			showMilestones = true,
+			showStreaks = true,
 		},
 		popup = {
 			width = 520,

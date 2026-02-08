@@ -26,6 +26,7 @@ function LibsTimePlayed:OnEnable()
 	self:InitializeTracker()
 	self:InitializeDataBroker()
 	self:InitializeMinimapButton()
+	self:InitializeStreakTracker()
 	self:InitializeOptions()
 
 	-- Register with Addon Compartment (10.x+ dropdown)

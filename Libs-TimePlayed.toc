@@ -31,6 +31,7 @@ Core\Database.lua
 Core\PlayedTracker.lua
 Core\TimeFormatter.lua
 Core\Milestones.lua
+Core\StreakTracker.lua
 Core\Import.lua
 
 # UI
