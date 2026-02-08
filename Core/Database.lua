@@ -12,7 +12,6 @@ local defaults = {
 			format = 'total', -- 'total', 'session', 'level'
 			timeFormat = 'smart', -- 'smart', 'full', 'hours'
 			groupBy = 'class', -- 'class', 'realm', 'faction'
-			showBarsInTooltip = true,
 			showMilestones = true,
 		},
 		popup = {

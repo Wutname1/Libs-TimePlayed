@@ -66,19 +66,6 @@ function LibsTimePlayed:InitializeOptions()
 							LibsTimePlayed:UpdateDisplay()
 						end,
 					},
-					showBarsInTooltip = {
-						name = 'Show Bars in Tooltip',
-						desc = 'Display text-based progress bars next to groups in the tooltip',
-						type = 'toggle',
-						order = 4,
-						width = 'full',
-						get = function()
-							return LibsTimePlayed.db.display.showBarsInTooltip
-						end,
-						set = function(_, val)
-							LibsTimePlayed.db.display.showBarsInTooltip = val
-						end,
-					},
 					showMilestones = {
 						name = 'Show Milestones',
 						desc = 'Display milestone achievements in tooltip and popup window',
