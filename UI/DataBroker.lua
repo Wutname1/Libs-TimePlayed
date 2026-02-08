@@ -38,17 +38,14 @@ function LibsTimePlayed:InitializeDataBroker()
 end
 
 function LibsTimePlayed:ShowTooltip(anchorFrame)
-	if LibQTip:IsAcquiredTooltip('LibsTimePlayedTooltip') then
-		LibQTip:ReleaseTooltip(LibQTip:AcquireTooltip('LibsTimePlayedTooltip'))
-	end
-
+	self:HideTooltip()
 	self:BuildTooltip(anchorFrame)
 end
 
 function LibsTimePlayed:HideTooltip()
-	if LibQTip:IsAcquiredTooltip('LibsTimePlayedTooltip') then
-		local tooltip = LibQTip:AcquireTooltip('LibsTimePlayedTooltip')
-		LibQTip:ReleaseTooltip(tooltip)
+	if self.activeTooltip then
+		LibQTip:ReleaseTooltip(self.activeTooltip)
+		self.activeTooltip = nil
 	end
 end
 

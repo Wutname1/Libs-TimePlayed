@@ -29,7 +29,7 @@ local defaults = {
 			showStreaks = true,
 		},
 		popup = {
-			width = 520,
+			width = 700,
 			height = 300,
 			point = 'CENTER',
 			x = 0,

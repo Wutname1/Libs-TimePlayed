@@ -19,8 +19,8 @@ Track `/played` time across all your characters with account-wide statistics, cl
 - **Account-wide**: Automatically tracks played time for every character you log into
 - **Multiple formats**: View total played, session time, or current level time
 - **Auto-update**: Refreshes on login and level up
-- 
-<img width="648" height="394" alt="image" src="https://github.com/user-attachments/assets/3c8c6d3e-838e-48ac-9dbc-e57b65b6b508" />
+
+<img width="829" height="466" alt="image" src="https://github.com/user-attachments/assets/fce9acb1-b090-46c5-93f4-d9c9f68404c6" />
 
 ### Display Options
 
@@ -65,23 +65,22 @@ Fun achievements based on your playtime: total hours played, number of character
 
 ## Commands
 
-| Command | Action |
-|---------|--------|
-| `/libstp` | Open options |
-| `/timeplayed` | Open options |
+| Command          | Action                       |
+| ---------------- | ---------------------------- |
+| `/libstp`        | Open options                 |
+| `/timeplayed`    | Open options                 |
 | `/libstp played` | Request fresh `/played` data |
-| `/libstp popup` | Toggle popup window |
+| `/libstp popup`  | Toggle popup window          |
 
 ### Click Actions
 
-| Input | Action |
-|-------|--------|
-| Left Click | Cycle display (total/session/level) |
-| Shift + Left Click | Toggle popup window |
-| Right Click | Open options |
-| Middle Click | Refresh `/played` |
+| Input              | Action                              |
+| ------------------ | ----------------------------------- |
+| Left Click         | Cycle display (total/session/level) |
+| Shift + Left Click | Toggle popup window                 |
+| Right Click        | Open options                        |
+| Middle Click       | Refresh `/played`                   |
 
 ## Support
 
 - [Discord](https://discord.gg/Qc9TRBv)
-

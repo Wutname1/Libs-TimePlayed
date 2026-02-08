@@ -229,6 +229,88 @@ function LibsTimePlayed:BuildStreakTimeline()
 	return table.concat(parts, '')
 end
 
+---Get the current week streak (consecutive weeks with at least 1 play day)
+---Weeks are Sunday-Saturday calendar weeks
+---@return number weekStreak Consecutive played weeks
+---@return table weekData Array of { weekStartDate, weekEndDate, played } for the last 5 weeks (newest first)
+function LibsTimePlayed:GetWeekStreak()
+	local streaks = self.globaldb.streaks
+	if not streaks then
+		return 0, {}
+	end
+
+	-- Find the most recent Sunday (start of current week)
+	local now = time()
+	local today = date('*t', now)
+	-- wday: 1=Sunday, 2=Monday, ..., 7=Saturday
+	local daysSinceSunday = today.wday - 1
+	local sundayTime = now - (daysSinceSunday * 86400)
+
+	local weekData = {}
+	local weekStreak = 0
+	local streakBroken = false
+
+	for w = 0, 4 do
+		local weekStart = sundayTime - (w * 7 * 86400)
+		local weekEnd = weekStart + (6 * 86400)
+		local played = false
+
+		-- Check each day in this Sun-Sat week
+		for d = 0, 6 do
+			local dayTime = weekStart + (d * 86400)
+			-- Don't count future days
+			if dayTime <= now then
+				local dayKey = date('%Y-%m-%d', dayTime)
+				if streaks.dailyLog[dayKey] then
+					played = true
+					break
+				end
+			end
+		end
+
+		table.insert(weekData, {
+			weekStartDate = date('%Y-%m-%d', weekStart),
+			weekEndDate = date('%Y-%m-%d', weekEnd),
+			played = played,
+		})
+
+		if not streakBroken then
+			if played then
+				weekStreak = weekStreak + 1
+			else
+				streakBroken = true
+			end
+		end
+	end
+
+	return weekStreak, weekData
+end
+
+---Get daily log entries for a specific month
+---@param year number e.g., 2026
+---@param month number 1-12
+---@return table<number, boolean> dayMap Maps day-of-month (1-31) to true if played
+function LibsTimePlayed:GetDailyLogForMonth(year, month)
+	local streaks = self.globaldb.streaks
+	local dayMap = {}
+	if not streaks then
+		return dayMap
+	end
+
+	for day = 1, 31 do
+		local t = time({ year = year, month = month, day = day, hour = 12 })
+		local parsed = date('*t', t)
+		-- If the month rolled over, we've passed the end of this month
+		if parsed.month ~= month then
+			break
+		end
+		local dayKey = date('%Y-%m-%d', t)
+		dayMap[day] = streaks.dailyLog[dayKey] ~= nil
+	end
+
+	return dayMap
+end
+
 ---Get all streak info as a single table
 ---@return table info { currentStreak, longestStreak, averageSessionMinutes, totalSessions, timeline }
 function LibsTimePlayed:GetStreakInfo()

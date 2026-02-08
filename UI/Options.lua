@@ -98,7 +98,7 @@ function LibsTimePlayed:InitializeOptions()
 					},
 					showStreaks = {
 						name = 'Show Play Streaks',
-						desc = 'Display play streak information and 14-day timeline in tooltip',
+						desc = 'Display play streak information in tooltip and popup window',
 						type = 'toggle',
 						order = 6,
 						width = 'full',
@@ -107,6 +107,7 @@ function LibsTimePlayed:InitializeOptions()
 						end,
 						set = function(_, val)
 							LibsTimePlayed.db.display.showStreaks = val
+							LibsTimePlayed:UpdatePopup()
 						end,
 					},
 				},
@@ -320,7 +321,7 @@ function LibsTimePlayed:InitializeOptions()
 						type = 'execute',
 						order = 2,
 						func = function()
-							LibsTimePlayed.db.popup.width = 520
+							LibsTimePlayed.db.popup.width = 700
 							LibsTimePlayed.db.popup.height = 300
 							LibsTimePlayed.db.popup.point = 'CENTER'
 							LibsTimePlayed.db.popup.x = 0
@@ -329,7 +330,7 @@ function LibsTimePlayed:InitializeOptions()
 							if frame then
 								frame:ClearAllPoints()
 								frame:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
-								frame:SetSize(520, 300)
+								frame:SetSize(700, 300)
 							end
 							LibsTimePlayed:Print('Popup position reset.')
 						end,

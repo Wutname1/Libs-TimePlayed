@@ -37,6 +37,7 @@ Core\Import.lua
 # UI
 UI\DataBroker.lua
 UI\Tooltip.lua
+UI\StreakPane.lua
 UI\PopupWindow.lua
 UI\Options.lua
 UI\MinimapButton.lua

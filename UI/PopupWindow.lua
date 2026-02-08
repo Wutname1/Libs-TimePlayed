@@ -3,6 +3,7 @@ local LibsTimePlayed = LibStub('AceAddon-3.0'):GetAddon('Libs-TimePlayed')
 
 local DEFAULT_FONT_SIZE = 10
 local MAX_ROWS = 120
+local STREAK_PANE_WIDTH = 188 -- 7 cols * 22px + 4px padding + 30px scrollbar/margin
 
 -- Dynamically computed row heights based on font size
 local function GetRowHeight()
@@ -50,7 +51,7 @@ end
 
 -- WoW max character name = 12 chars. Longest display: "    Characternam (80)" = ~21 chars + 4 buffer
 -- We measure the max label width using the current font, then cap at that
-local MAX_LABEL_CHARS = 25 -- "    " indent (4) + 12 char name + " (80)" (5) + 4 buffer
+local MAX_LABEL_CHARS = 20 -- "    " indent (4) + 12 char name + " (80)" (5) + 2 buffer
 
 ---Compute label width: scales with row width but caps at the max name length
 ---@param rowWidth number Total row width
@@ -60,7 +61,7 @@ local function GetLabelWidth(rowWidth)
 	-- Approximate max label width from font size and max chars
 	local maxLabelWidth = MAX_LABEL_CHARS * fontSize * 0.6
 	-- Give label ~30% of row width, but never more than the max
-	local dynamicWidth = rowWidth * 0.30
+	local dynamicWidth = rowWidth * 0.25
 	return math.min(math.max(dynamicWidth, 90), maxLabelWidth)
 end
 
@@ -327,11 +328,11 @@ function LibsTimePlayed:CreatePopup()
 	local window = LibAT.UI.CreateWindow({
 		name = 'LibsTimePlayedPopup',
 		title = 'Time Played',
-		width = self.db.popup.width or 520,
+		width = self.db.popup.width or 700,
 		height = self.db.popup.height or 300,
 		hidePortrait = true,
 		resizable = true,
-		minWidth = 400,
+		minWidth = 550,
 		minHeight = 200,
 	})
 
@@ -345,6 +346,15 @@ function LibsTimePlayed:CreatePopup()
 		LibsTimePlayed:OpenOptions()
 	end)
 	window.settingsButton = settingsButton
+
+	-- Streak toggle button (calendar icon, to the left of settings)
+	local streakButton = LibAT.UI.CreateIconButton(controlFrame, 'ui-hud-calendar-1-up', 'ui-hud-calendar-1-mouseover', 'ui-hud-calendar-1-down')
+	streakButton:SetPoint('RIGHT', settingsButton, 'LEFT', -5, -2)
+	streakButton:SetScript('OnClick', function()
+		LibsTimePlayed.db.display.showStreaks = not LibsTimePlayed.db.display.showStreaks
+		LibsTimePlayed:UpdatePopup()
+	end)
+	window.streakButton = streakButton
 
 	-- Group By dropdown (modern style, positioned before settings button)
 	local groupDropdown = LibAT.UI.CreateDropdown(controlFrame, 'Group By', 130, 22)
@@ -373,18 +383,38 @@ function LibsTimePlayed:CreatePopup()
 	-- Create content area below control frame
 	local contentFrame = LibAT.UI.CreateContentFrame(window, controlFrame)
 
-	-- Create scroll frame using LibAT.UI (modern scrollbar)
-	local scrollFrame = LibAT.UI.CreateScrollFrame(contentFrame)
-	scrollFrame:SetPoint('TOPLEFT', contentFrame, 'TOPLEFT', 4, 0)
-	scrollFrame:SetPoint('BOTTOMRIGHT', contentFrame, 'BOTTOMRIGHT', -4, 40)
+	-- Right pane: streak display (fixed width, anchored to right edge)
+	local rightPane = CreateFrame('Frame', nil, contentFrame)
+	rightPane:SetWidth(STREAK_PANE_WIDTH)
+	rightPane:SetPoint('TOPRIGHT', contentFrame, 'TOPRIGHT', 0, 0)
+	rightPane:SetPoint('BOTTOMRIGHT', contentFrame, 'BOTTOMRIGHT', 0, 0)
+	window.rightPane = rightPane
+
+	-- Vertical divider between panes
+	local paneDivider = contentFrame:CreateTexture(nil, 'OVERLAY')
+	paneDivider:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+	paneDivider:SetWidth(1)
+	paneDivider:SetPoint('TOPRIGHT', rightPane, 'TOPLEFT', -2, 0)
+	paneDivider:SetPoint('BOTTOMRIGHT', rightPane, 'BOTTOMLEFT', -2, 20)
+	window.paneDivider = paneDivider
+
+	-- Left pane: character data (fills remaining space)
+	local leftPane = CreateFrame('Frame', nil, contentFrame)
+	leftPane:SetPoint('TOPLEFT', contentFrame, 'TOPLEFT', 0, 0)
+	leftPane:SetPoint('BOTTOMRIGHT', paneDivider, 'BOTTOMLEFT', -2, 0)
+	window.leftPane = leftPane
+
+	-- Create scroll frame in the left pane
+	local scrollFrame = LibAT.UI.CreateScrollFrame(leftPane)
+	scrollFrame:SetPoint('TOPLEFT', leftPane, 'TOPLEFT', 4, 0)
+	scrollFrame:SetPoint('BOTTOMRIGHT', leftPane, 'BOTTOMRIGHT', -4, 0)
+	window.scrollFrame = scrollFrame
 
 	-- Create scroll child
 	local scrollChild = CreateFrame('Frame', nil, scrollFrame)
 	scrollChild:SetWidth(1) -- Will be set dynamically
 	scrollChild:SetHeight(1) -- Will be set dynamically based on content
 	scrollFrame:SetScrollChild(scrollChild)
-
-	window.scrollFrame = scrollFrame
 	window.scrollChild = scrollChild
 
 	-- Create row pool
@@ -393,6 +423,22 @@ function LibsTimePlayed:CreatePopup()
 		row:Hide()
 		rows[i] = row
 	end
+
+	-- Create scroll frame for the right (streak) pane
+	local streakScrollFrame = LibAT.UI.CreateScrollFrame(rightPane)
+	streakScrollFrame:SetPoint('TOPLEFT', rightPane, 'TOPLEFT', 0, 0)
+	streakScrollFrame:SetPoint('BOTTOMRIGHT', rightPane, 'BOTTOMRIGHT', -4, 20)
+	window.streakScrollFrame = streakScrollFrame
+
+	-- Create scroll child for streak pane
+	local streakScrollChild = CreateFrame('Frame', nil, streakScrollFrame)
+	streakScrollChild:SetWidth(STREAK_PANE_WIDTH - 20)
+	streakScrollChild:SetHeight(1) -- Will be set based on content
+	streakScrollFrame:SetScrollChild(streakScrollChild)
+	window.streakScrollChild = streakScrollChild
+
+	-- Create streak pane content inside the scroll child
+	self:CreateStreakPane(streakScrollChild)
 
 	-- Total text (bottom)
 	local totalText = window:CreateFontString(nil, 'OVERLAY', 'GameFontHighlight')
@@ -419,22 +465,13 @@ function LibsTimePlayed:CreatePopup()
 		self.db.popup.height = window:GetHeight()
 	end)
 
-	-- Recalculate row widths and label widths on resize
+	-- Recalculate pane widths and row widths on resize
 	window:HookScript('OnSizeChanged', function()
 		if not window:IsShown() then
 			return
 		end
 
-		local rowWidth = scrollFrame:GetWidth() - 20
-		for i = 1, MAX_ROWS do
-			local row = rows[i]
-			if row then
-				row:SetWidth(rowWidth)
-				row.label:SetWidth(GetLabelWidth(rowWidth))
-			end
-		end
-
-		-- Re-layout the content
+		-- Re-layout the content (UpdatePopup handles pane widths and row widths)
 		self:UpdatePopup()
 	end)
 
@@ -453,6 +490,49 @@ function LibsTimePlayed:UpdatePopup()
 	-- Update dropdown text
 	if popupFrame.groupDropdown then
 		popupFrame.groupDropdown:SetText('Group: ' .. GROUPBY_LABELS[groupBy])
+	end
+
+	-- Manage pane layout based on showStreaks setting
+	local showStreaks = self.db.display.showStreaks
+
+	if showStreaks then
+		popupFrame.rightPane:Show()
+		popupFrame.paneDivider:Show()
+		-- Left pane shrinks: anchored to divider
+		popupFrame.leftPane:ClearAllPoints()
+		popupFrame.leftPane:SetPoint('TOPLEFT', popupFrame.leftPane:GetParent(), 'TOPLEFT', 0, 0)
+		popupFrame.leftPane:SetPoint('BOTTOMRIGHT', popupFrame.paneDivider, 'BOTTOMLEFT', -2, 0)
+		-- Shift left scrollbar inward so it doesn't crowd the divider
+		popupFrame.scrollFrame:ClearAllPoints()
+		popupFrame.scrollFrame:SetPoint('TOPLEFT', popupFrame.leftPane, 'TOPLEFT', 4, 0)
+		popupFrame.scrollFrame:SetPoint('BOTTOMRIGHT', popupFrame.leftPane, 'BOTTOMRIGHT', -14, 0)
+		if popupFrame.streakButton then
+			popupFrame.streakButton.NormalTexture:SetDesaturated(false)
+		end
+	else
+		popupFrame.rightPane:Hide()
+		popupFrame.paneDivider:Hide()
+		-- Left pane fills full content area
+		popupFrame.leftPane:ClearAllPoints()
+		popupFrame.leftPane:SetPoint('TOPLEFT', popupFrame.leftPane:GetParent(), 'TOPLEFT', 0, 0)
+		popupFrame.leftPane:SetPoint('BOTTOMRIGHT', popupFrame.leftPane:GetParent(), 'BOTTOMRIGHT', 0, 0)
+		-- Reset left scrollbar to normal position
+		popupFrame.scrollFrame:ClearAllPoints()
+		popupFrame.scrollFrame:SetPoint('TOPLEFT', popupFrame.leftPane, 'TOPLEFT', 4, 0)
+		popupFrame.scrollFrame:SetPoint('BOTTOMRIGHT', popupFrame.leftPane, 'BOTTOMRIGHT', -4, 20)
+		if popupFrame.streakButton then
+			popupFrame.streakButton.NormalTexture:SetDesaturated(true)
+		end
+	end
+
+	-- Update row widths for the left pane
+	local rowWidth = popupFrame.scrollFrame:GetWidth() - 20
+	for i = 1, MAX_ROWS do
+		local row = rows[i]
+		if row then
+			row:SetWidth(rowWidth)
+			row.label:SetWidth(GetLabelWidth(rowWidth))
+		end
 	end
 
 	-- Get data
@@ -587,6 +667,11 @@ function LibsTimePlayed:UpdatePopup()
 		popupFrame.milestoneText:Show()
 	else
 		popupFrame.milestoneText:Hide()
+	end
+
+	-- Update streak pane
+	if showStreaks and self.UpdateStreakPane then
+		self:UpdateStreakPane()
 	end
 end
 
