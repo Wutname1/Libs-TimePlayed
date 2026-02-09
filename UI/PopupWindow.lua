@@ -51,7 +51,7 @@ local function GetExternalSourcesForChar(charName, charRealm)
 	local sources = {}
 	-- Check AltVault
 	if _G.AltVaultDB and _G.AltVaultDB.characters then
-		for _, entry in pairs(_G.AltVaultDB.characters) do
+		for _, entry in ipairs(_G.AltVaultDB.characters) do
 			if type(entry) == 'table' and entry.character and entry.character.name == charName and entry.character.realm == charRealm then
 				table.insert(sources, 'AltVault')
 				break
@@ -75,9 +75,11 @@ local function DeleteFromAltVault(charName, charRealm)
 	if not _G.AltVaultDB or not _G.AltVaultDB.characters then
 		return
 	end
-	for key, entry in pairs(_G.AltVaultDB.characters) do
+	-- AltVaultDB.characters is a numeric array — use table.remove to keep indices valid
+	for i = #_G.AltVaultDB.characters, 1, -1 do
+		local entry = _G.AltVaultDB.characters[i]
 		if type(entry) == 'table' and entry.character and entry.character.name == charName and entry.character.realm == charRealm then
-			_G.AltVaultDB.characters[key] = nil
+			table.remove(_G.AltVaultDB.characters, i)
 			return
 		end
 	end
