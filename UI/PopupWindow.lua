@@ -58,10 +58,9 @@ local function GetExternalSourcesForChar(charName, charRealm)
 			end
 		end
 	end
-	-- Check Altoholic
-	if _G.DataStore_CharacterDB and _G.DataStore_CharacterDB.global and _G.DataStore_CharacterDB.global.Characters then
-		local altKey = 'Default.' .. charRealm .. '.' .. charName
-		if _G.DataStore_CharacterDB.global.Characters[altKey] then
+	-- Check Altoholic/DataStore
+	if _G.DataStore and _G.DataStore.GetCharacter then
+		if _G.DataStore:GetCharacter(charName, charRealm) then
 			table.insert(sources, 'Altoholic')
 		end
 	end
@@ -85,15 +84,16 @@ local function DeleteFromAltVault(charName, charRealm)
 	end
 end
 
----Delete a character from Altoholic's database
+---Delete a character from Altoholic/DataStore's database
+---Uses DataStore's own DeleteCharacter API to properly clean up all module tables
 ---@param charName string Character name
 ---@param charRealm string Realm name
 local function DeleteFromAltoholic(charName, charRealm)
-	if not _G.DataStore_CharacterDB or not _G.DataStore_CharacterDB.global or not _G.DataStore_CharacterDB.global.Characters then
+	-- Use DataStore's proper API if available — it cleans up all module tables
+	if _G.DataStore and _G.DataStore.DeleteCharacter then
+		_G.DataStore:DeleteCharacter(charName, charRealm)
 		return
 	end
-	local altKey = 'Default.' .. charRealm .. '.' .. charName
-	_G.DataStore_CharacterDB.global.Characters[altKey] = nil
 end
 
 ---Apply the configured font size to a FontString
