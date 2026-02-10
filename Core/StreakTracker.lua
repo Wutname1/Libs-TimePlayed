@@ -283,6 +283,11 @@ function LibsTimePlayed:GetWeekStreak()
 		end
 	end
 
+	-- Update longest week streak if current is greater
+	if weekStreak > (streaks.longestWeekStreak or 0) then
+		streaks.longestWeekStreak = weekStreak
+	end
+
 	return weekStreak, weekData
 end
 
@@ -312,13 +317,14 @@ function LibsTimePlayed:GetDailyLogForMonth(year, month)
 end
 
 ---Get all streak info as a single table
----@return table info { currentStreak, longestStreak, averageSessionMinutes, totalSessions, timeline }
+---@return table info { currentStreak, longestStreak, longestWeekStreak, averageSessionMinutes, totalSessions, timeline }
 function LibsTimePlayed:GetStreakInfo()
 	local streaks = self.globaldb.streaks
 	if not streaks then
 		return {
 			currentStreak = 0,
 			longestStreak = 0,
+			longestWeekStreak = 0,
 			averageSessionMinutes = 0,
 			totalSessions = 0,
 			timeline = '',
@@ -328,6 +334,7 @@ function LibsTimePlayed:GetStreakInfo()
 	return {
 		currentStreak = streaks.currentStreak or 0,
 		longestStreak = streaks.longestStreak or 0,
+		longestWeekStreak = streaks.longestWeekStreak or 0,
 		averageSessionMinutes = self:GetAverageSessionMinutes(),
 		totalSessions = streaks.totalSessions or 0,
 		timeline = self:BuildStreakTimeline(),

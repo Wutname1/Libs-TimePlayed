@@ -16,6 +16,7 @@ local defaults = {
 			longestStreak = 0,
 			longestStreakStart = '',
 			longestStreakEnd = '',
+			longestWeekStreak = 0,
 			totalSessions = 0,
 		},
 	},

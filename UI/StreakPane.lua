@@ -298,6 +298,15 @@ function LibsTimePlayed:CreateStreakPane(parent)
 	dayStreakLabel:SetTextColor(0.7, 0.7, 0.7)
 	streakPane.dayStreakLabel = dayStreakLabel
 
+	-- Day Streak best (small text under label)
+	local dayStreakBest = streakPane:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
+	dayStreakBest:SetPoint('TOP', dayStreakLabel, 'BOTTOM', 0, -1)
+	dayStreakBest:SetText('Longest: 0')
+	dayStreakBest:SetTextColor(0.5, 0.5, 0.5)
+	local fontFile = dayStreakBest:GetFont()
+	dayStreakBest:SetFont(fontFile, 9, '')
+	streakPane.dayStreakBest = dayStreakBest
+
 	-- Week Streak number
 	local weekStreakNumber = streakPane:CreateFontString(nil, 'OVERLAY', 'GameFontNormalHuge')
 	weekStreakNumber:SetPoint('TOP', streakPane, 'TOP', (streakPane:GetWidth() or 120) * 0.2, -yPos)
@@ -312,8 +321,16 @@ function LibsTimePlayed:CreateStreakPane(parent)
 	weekStreakLabel:SetTextColor(0.7, 0.7, 0.7)
 	streakPane.weekStreakLabel = weekStreakLabel
 
+	-- Week Streak best (small text under label)
+	local weekStreakBest = streakPane:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
+	weekStreakBest:SetPoint('TOP', weekStreakLabel, 'BOTTOM', 0, -1)
+	weekStreakBest:SetText('Longest: 0')
+	weekStreakBest:SetTextColor(0.5, 0.5, 0.5)
+	weekStreakBest:SetFont(fontFile, 9, '')
+	streakPane.weekStreakBest = weekStreakBest
+
 	-- Divider
-	local headerHeight = 50
+	local headerHeight = 62
 	local divider = streakPane:CreateTexture(nil, 'OVERLAY')
 	divider:SetPoint('TOPLEFT', streakPane, 'TOPLEFT', 4, -headerHeight)
 	divider:SetPoint('TOPRIGHT', streakPane, 'TOPRIGHT', -4, -headerHeight)
@@ -383,6 +400,9 @@ function LibsTimePlayed:UpdateStreakPane()
 		streakPane.dayStreakNumber:SetTextColor(COLOR_STREAK_ZERO.r, COLOR_STREAK_ZERO.g, COLOR_STREAK_ZERO.b)
 	end
 
+	-- Update day streak best
+	streakPane.dayStreakBest:SetText('Longest: ' .. streakInfo.longestStreak)
+
 	-- Update week streak number
 	streakPane.weekStreakNumber:SetText(weekStreak)
 	if weekStreak > 0 then
@@ -390,6 +410,9 @@ function LibsTimePlayed:UpdateStreakPane()
 	else
 		streakPane.weekStreakNumber:SetTextColor(COLOR_STREAK_ZERO.r, COLOR_STREAK_ZERO.g, COLOR_STREAK_ZERO.b)
 	end
+
+	-- Update week streak best
+	streakPane.weekStreakBest:SetText('Longest: ' .. streakInfo.longestWeekStreak)
 
 	-- Get current date info
 	local now = date('*t', time())

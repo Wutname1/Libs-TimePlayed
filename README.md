@@ -8,7 +8,7 @@ Track `/played` time across all your characters with account-wide statistics, cl
 
 **New to Lib's TimePlayed?** If you have AltVault or Altoholic installed, you'll see this on first login:
 
-<img width="420" height="222" alt="image" src="https://github.com/user-attachments/assets/afef8399-6a63-483e-b59c-c3a7222f0f56" />
+![image](https://github.com/user-attachments/assets/afef8399-6a63-483e-b59c-c3a7222f0f56)
 
 **Click "Import Now"** and instantly see all your characters' played time—no need to log into each one!
 
@@ -20,7 +20,7 @@ Track `/played` time across all your characters with account-wide statistics, cl
 - **Multiple formats**: View total played, session time, or current level time
 - **Auto-update**: Refreshes on login and level up
 
-<img width="829" height="466" alt="image" src="https://github.com/user-attachments/assets/fce9acb1-b090-46c5-93f4-d9c9f68404c6" />
+![image](https://media.forgecdn.net/attachments/1525/681/screenshot-2026-02-09-220548-png.png)
 
 ### Display Options
 
