@@ -69,4 +69,3 @@ function LibsTimePlayed:UpdateDisplay()
 
 	dataObj.text = text
 end
-

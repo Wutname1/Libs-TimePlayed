@@ -5,6 +5,7 @@
 ## Version: @project-version@
 ## Author: Wutname1
 ## X-Curse-Project-ID: 1457099
+## X-Wago-ID: EGPeB5N1
 ## SavedVariables: LibsTimePlayedDB
 ## OptionalDeps: Libs-DataBar, Libs-AddonTools
 ## Category: Data Broker
