@@ -7,7 +7,7 @@
 ## X-Curse-Project-ID: 1457099
 ## X-Wago-ID: EGPeB5N1
 ## SavedVariables: LibsTimePlayedDB
-## OptionalDeps: Libs-DataBar, Libs-AddonTools
+## OptionalDeps: Libs-DataBar, LibsAddonTools
 ## Category: Data Broker
 ## Category-enUS: Data Broker
 ## Category-deDE: Daten-Broker

@@ -10,7 +10,7 @@ LibsTimePlayed.addonName = "Lib's TimePlayed"
 function LibsTimePlayed:OnInitialize()
 	-- Initialize logger
 	if LibAT and LibAT.Logger then
-		self.logger = LibAT.Logger.RegisterAddon('LibsTimePlayed')
+		self.logger = LibAT.Logger.RegisterAddon('Libs - Time Played')
 	end
 
 	-- Database is initialized in Core/Database.lua
