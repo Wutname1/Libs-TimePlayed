@@ -78,19 +78,10 @@ function StreakTracker:UpdateStreakSessionTime()
 end
 
 ---Recalculate current and longest streaks from the daily log
----Also prunes entries older than 30 days
 function StreakTracker:RecalculateStreaks()
 	local streaks = LibsTimePlayed.globaldb.streaks
 	if not streaks then
 		return
-	end
-
-	-- Prune entries older than 30 days
-	local cutoffKey = GetDateKey(30)
-	for dateKey in pairs(streaks.dailyLog) do
-		if dateKey < cutoffKey then
-			streaks.dailyLog[dateKey] = nil
-		end
 	end
 
 	-- Calculate current streak (consecutive days ending today or yesterday)
@@ -99,54 +90,60 @@ function StreakTracker:RecalculateStreaks()
 
 	if streaks.dailyLog[today] then
 		currentStreak = 1
-		for i = 1, 30 do
-			local dayKey = GetDateKey(i)
-			if streaks.dailyLog[dayKey] then
-				currentStreak = currentStreak + 1
-			else
-				break
-			end
-		end
-	else
-		for i = 1, 30 do
-			local dayKey = GetDateKey(i)
-			if streaks.dailyLog[dayKey] then
-				currentStreak = currentStreak + 1
-			else
-				break
-			end
+	end
+
+	local i = 1
+	while true do
+		local dayKey = GetDateKey(i)
+		if streaks.dailyLog[dayKey] then
+			currentStreak = currentStreak + 1
+			i = i + 1
+		else
+			break
 		end
 	end
 
 	streaks.currentStreak = currentStreak
 
-	-- Calculate longest streak by scanning all consecutive runs
+	-- Calculate longest streak by sorting all date keys and walking consecutive runs
 	local longestStreak = currentStreak
 	local longestStart = ''
 	local longestEnd = ''
 
+	local dateKeys = {}
+	for dateKey in pairs(streaks.dailyLog) do
+		table.insert(dateKeys, dateKey)
+	end
+	table.sort(dateKeys)
+
 	local runLength = 0
 	local runStart = ''
-	for i = 30, 0, -1 do
-		local dayKey = GetDateKey(i)
-		if streaks.dailyLog[dayKey] then
-			if runLength == 0 then
-				runStart = dayKey
+	local prevKey = ''
+	for _, dateKey in ipairs(dateKeys) do
+		if prevKey ~= '' then
+			-- Check if this date is exactly 1 day after the previous
+			local expectedNext = date('%Y-%m-%d', time({ year = tonumber(prevKey:sub(1, 4)), month = tonumber(prevKey:sub(6, 7)), day = tonumber(prevKey:sub(9, 10)), hour = 12 }) + 86400)
+			if dateKey == expectedNext then
+				runLength = runLength + 1
+			else
+				if runLength > longestStreak then
+					longestStreak = runLength
+					longestStart = runStart
+					longestEnd = prevKey
+				end
+				runLength = 1
+				runStart = dateKey
 			end
-			runLength = runLength + 1
 		else
-			if runLength > longestStreak then
-				longestStreak = runLength
-				longestStart = runStart
-				longestEnd = GetDateKey(i + 1)
-			end
-			runLength = 0
+			runLength = 1
+			runStart = dateKey
 		end
+		prevKey = dateKey
 	end
 	if runLength > longestStreak then
 		longestStreak = runLength
 		longestStart = runStart
-		longestEnd = GetTodayKey()
+		longestEnd = prevKey
 	end
 
 	if (streaks.longestStreak or 0) > longestStreak then
@@ -203,12 +200,39 @@ function StreakTracker:BuildStreakTimeline()
 	return table.concat(parts, '')
 end
 
+---Get the oldest and newest date keys from the daily log
+---@return string|nil oldest Oldest date key (YYYY-MM-DD)
+---@return string|nil newest Newest date key (YYYY-MM-DD)
+function StreakTracker:GetDailyLogDateRange()
+	local streaks = LibsTimePlayed.globaldb.streaks
+	if not streaks then
+		return nil, nil
+	end
+
+	local oldest, newest
+	for dateKey in pairs(streaks.dailyLog) do
+		if not oldest or dateKey < oldest then
+			oldest = dateKey
+		end
+		if not newest or dateKey > newest then
+			newest = dateKey
+		end
+	end
+
+	return oldest, newest
+end
+
 ---Get the current week streak (consecutive weeks with at least 1 play day)
 ---@return number weekStreak Consecutive played weeks
----@return table weekData Array of { weekStartDate, weekEndDate, played } for the last 5 weeks (newest first)
+---@return table weekData Array of { weekStartDate, weekEndDate, played, totalSeconds, sessions } (newest first)
 function StreakTracker:GetWeekStreak()
 	local streaks = LibsTimePlayed.globaldb.streaks
 	if not streaks then
+		return 0, {}
+	end
+
+	local oldest = self:GetDailyLogDateRange()
+	if not oldest then
 		return 0, {}
 	end
 
@@ -217,22 +241,30 @@ function StreakTracker:GetWeekStreak()
 	local daysSinceSunday = today.wday - 1
 	local sundayTime = now - (daysSinceSunday * 86400)
 
+	-- Calculate max weeks to scan based on oldest daily log entry
+	local oldestTime = time({ year = tonumber(oldest:sub(1, 4)), month = tonumber(oldest:sub(6, 7)), day = tonumber(oldest:sub(9, 10)), hour = 12 })
+	local maxWeeks = math.ceil((now - oldestTime) / (7 * 86400)) + 1
+
 	local weekData = {}
 	local weekStreak = 0
 	local streakBroken = false
 
-	for w = 0, 4 do
+	for w = 0, maxWeeks do
 		local weekStart = sundayTime - (w * 7 * 86400)
 		local weekEnd = weekStart + (6 * 86400)
 		local played = false
+		local totalSeconds = 0
+		local sessions = 0
 
 		for d = 0, 6 do
 			local dayTime = weekStart + (d * 86400)
 			if dayTime <= now then
 				local dayKey = date('%Y-%m-%d', dayTime)
-				if streaks.dailyLog[dayKey] then
+				local dayEntry = streaks.dailyLog[dayKey]
+				if dayEntry then
 					played = true
-					break
+					totalSeconds = totalSeconds + (dayEntry.totalSeconds or 0)
+					sessions = sessions + (dayEntry.sessions or 0)
 				end
 			end
 		end
@@ -241,6 +273,8 @@ function StreakTracker:GetWeekStreak()
 			weekStartDate = date('%Y-%m-%d', weekStart),
 			weekEndDate = date('%Y-%m-%d', weekEnd),
 			played = played,
+			totalSeconds = totalSeconds,
+			sessions = sessions,
 		})
 
 		if not streakBroken then

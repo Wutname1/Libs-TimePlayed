@@ -215,7 +215,7 @@ local function CreateWeekBars(parent, yOffset)
 		local barFrame = CreateFrame('Frame', nil, parent)
 		barFrame:SetHeight(BAR_HEIGHT)
 		barFrame:SetPoint('TOPLEFT', parent, 'TOPLEFT', 4, -(yOffset + (i - 1) * (BAR_HEIGHT + BAR_SPACING)))
-		barFrame:SetPoint('RIGHT', parent, 'RIGHT', -50, 0)
+		barFrame:SetPoint('RIGHT', parent, 'RIGHT', -110, 0)
 
 		local bg = barFrame:CreateTexture(nil, 'BACKGROUND')
 		bg:SetAllPoints()
@@ -235,9 +235,22 @@ local function CreateWeekBars(parent, yOffset)
 	return bars
 end
 
+---Format seconds into a compact hours string (e.g., "4.2h", "45m")
+---@param seconds number
+---@return string
+local function FormatCompactTime(seconds)
+	if seconds >= 3600 then
+		return string.format('%.1fh', seconds / 3600)
+	elseif seconds >= 60 then
+		return string.format('%dm', math.floor(seconds / 60))
+	else
+		return '< 1m'
+	end
+end
+
 ---Update week streak bars with data
 ---@param bars table Created by CreateWeekBars
----@param weekData table Array of { weekStartDate, weekEndDate, played } (newest first)
+---@param weekData table Array of { weekStartDate, weekEndDate, played, totalSeconds, sessions } (newest first)
 local function UpdateWeekBars(bars, weekData)
 	for i = 1, 5 do
 		local bar = bars.frames[i]
@@ -250,12 +263,18 @@ local function UpdateWeekBars(bars, weekData)
 				bar.bg:SetColorTexture(COLOR_MISSED.r, COLOR_MISSED.g, COLOR_MISSED.b, COLOR_MISSED.a)
 			end
 
-			-- Format label as short date range (e.g., "Feb 2-8")
+			-- Format label as short date range with stats (e.g., "Feb 2-8 (3s, 4.2h)")
 			local startMonth = tonumber(data.weekStartDate:sub(6, 7))
 			local startDay = tonumber(data.weekStartDate:sub(9, 10))
 			local endDay = tonumber(data.weekEndDate:sub(9, 10))
 			local monthAbbrev = MONTH_NAMES[startMonth]:sub(1, 3)
-			bar.label:SetText(monthAbbrev .. ' ' .. startDay .. '-' .. endDay)
+			local label = monthAbbrev .. ' ' .. startDay .. '-' .. endDay
+
+			if data.sessions and data.sessions > 0 then
+				label = label .. ' (' .. data.sessions .. 's, ' .. FormatCompactTime(data.totalSeconds or 0) .. ')'
+			end
+
+			bar.label:SetText(label)
 
 			bar:Show()
 			bar.label:Show()
